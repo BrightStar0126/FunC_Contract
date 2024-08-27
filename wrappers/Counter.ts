@@ -1,13 +1,25 @@
-import { Address, beginCell, Cell, Contract, contractAddress, ContractProvider, Sender, SendMode } from '@ton/core';
+import {
+    Address,
+    beginCell,
+    Cell,
+    Contract,
+    contractAddress,
+    ContractProvider,
+    Sender,
+    SendMode,
+} from '@ton/core';
 
 export type CounterConfig = {};
 
 export function counterConfigToCell(config: CounterConfig): Cell {
-    return beginCell().endCell();
+    return beginCell().storeUint(0, 64).endCell();
 }
 
 export class Counter implements Contract {
-    constructor(readonly address: Address, readonly init?: { code: Cell; data: Cell }) {}
+    constructor(
+        readonly address: Address,
+        readonly init?: { code: Cell; data: Cell }
+    ) {}
 
     static createFromAddress(address: Address) {
         return new Counter(address);
@@ -25,5 +37,23 @@ export class Counter implements Contract {
             sendMode: SendMode.PAY_GAS_SEPARATELY,
             body: beginCell().endCell(),
         });
+    }
+
+    async sendNumber(
+        provider: ContractProvider,
+        via: Sender,
+        value: bigint,
+        number: bigint
+    ) {
+        await provider.internal(via, {
+            value,
+            sendMode: SendMode.PAY_GAS_SEPARATELY,
+            body: beginCell().storeUint(number, 32).endCell(),
+        });
+    }
+
+    async getTotal(provider: ContractProvider) {
+        const result = (await provider.get('get_total', [])).stack;
+        return result.readBigNumber();
     }
 }
